@@ -17,7 +17,6 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-
 /*
   Function slowmove and supporting code added 2010 by Korman. Above limitations apply
   to all added code, except for the official maintainer of the Servo library. If he,
@@ -30,7 +29,7 @@
   Updated 2013 by Philip van Allen (pva),
   -- updated for Arduino 1.0 +
   -- consolidated slowmove into the write command (while keeping slowmove() for compatibility
-     with Korman's version)
+	 with Korman's version)
   -- added wait parameter to allow write command to block until move is complete
   -- added sequence playing ability to asynchronously move the servo through a series of positions, must be called in a loop
 
@@ -75,6 +74,8 @@
 
 #include <inttypes.h>
 
+#define SAFE_MEMORY
+
 /*
  * Defines for 16 bit timers used with  Servo library
  *
@@ -85,99 +86,132 @@
  */
 
 // Say which 16 bit timers can be used and in what order
-#if defined(__AVR_ATmega1280__)  || defined(__AVR_ATmega2560__)
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
 #define _useTimer5
 #define _useTimer1
 #define _useTimer3
 #define _useTimer4
-typedef enum { _timer5, _timer1, _timer3, _timer4, _Nbr_16timers } timer16_Sequence_t ;
+typedef enum
+{
+	_timer5,
+	_timer1,
+	_timer3,
+	_timer4,
+	_Nbr_16timers
+} timer16_Sequence_t;
 
 #elif defined(__AVR_ATmega32U4__)
 #define _useTimer3
 #define _useTimer1
-typedef enum { _timer3, _timer1, _Nbr_16timers } timer16_Sequence_t ;
+typedef enum
+{
+	_timer3,
+	_timer1,
+	_Nbr_16timers
+} timer16_Sequence_t;
 
 #elif defined(__AVR_AT90USB646__) || defined(__AVR_AT90USB1286__)
 #define _useTimer3
 #define _useTimer1
-typedef enum { _timer3, _timer1, _Nbr_16timers } timer16_Sequence_t ;
+typedef enum
+{
+	_timer3,
+	_timer1,
+	_Nbr_16timers
+} timer16_Sequence_t;
 
-#elif defined(__AVR_ATmega128__) ||defined(__AVR_ATmega1281__)||defined(__AVR_ATmega2561__)
+#elif defined(__AVR_ATmega128__) || defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__)
 #define _useTimer3
 #define _useTimer1
-typedef enum { _timer3, _timer1, _Nbr_16timers } timer16_Sequence_t ;
+typedef enum
+{
+	_timer3,
+	_timer1,
+	_Nbr_16timers
+} timer16_Sequence_t;
 
-#else  // everything else
+#else // everything else
 #define _useTimer1
-typedef enum { _timer1, _Nbr_16timers } timer16_Sequence_t ;
+typedef enum
+{
+	_timer1,
+	_Nbr_16timers
+} timer16_Sequence_t;
 #endif
 
-#define VarSpeedServo_VERSION           2      // software version of this library
+#define VarSpeedServo_VERSION 2 // software version of this library
 
-#define MIN_PULSE_WIDTH       544     // the shortest pulse sent to a servo
-#define MAX_PULSE_WIDTH      2400     // the longest pulse sent to a servo
-#define DEFAULT_PULSE_WIDTH  1500     // default pulse width when servo is attached
-#define REFRESH_INTERVAL    20000     // minimum time to refresh servos in microseconds
+#define MIN_PULSE_WIDTH 544		 // the shortest pulse sent to a servo
+#define MAX_PULSE_WIDTH 2400	 // the longest pulse sent to a servo
+#define DEFAULT_PULSE_WIDTH 1500 // default pulse width when servo is attached
+#define REFRESH_INTERVAL 20000	 // minimum time to refresh servos in microseconds
 
-#define SERVOS_PER_TIMER       12     // the maximum number of servos controlled by one timer
-#define MAX_SERVOS   (_Nbr_16timers  * SERVOS_PER_TIMER)
+#define SERVOS_PER_TIMER 12 // the maximum number of servos controlled by one timer
+#define MAX_SERVOS (_Nbr_16timers * SERVOS_PER_TIMER)
 
-#define INVALID_SERVO         255     // flag indicating an invalid servo index
+#define INVALID_SERVO 255 // flag indicating an invalid servo index
 
-#define CURRENT_SEQUENCE_STOP   255    // used to indicate the current sequence is not used and sequence should stop
+#define CURRENT_SEQUENCE_STOP 255 // used to indicate the current sequence is not used and sequence should stop
 
+typedef struct
+{
+	uint8_t nbr : 6;	  // a pin number from 0 to 63
+	uint8_t isActive : 1; // true if this channel is enabled, pin not pulsed if false
+} ServoPin_t;
 
-typedef struct  {
-  uint8_t nbr        :6 ;             // a pin number from 0 to 63
-  uint8_t isActive   :1 ;             // true if this channel is enabled, pin not pulsed if false
-} ServoPin_t   ;
-
-typedef struct {
-  ServoPin_t Pin;
-  unsigned int ticks;
-	unsigned int value;			// Extension for external wait (Gill)
-	unsigned int target;			// Extension for slowmove
-	uint8_t speed;					// Extension for slowmove
+typedef struct
+{
+	ServoPin_t Pin;
+	unsigned int ticks;
+	unsigned int value;	 // Extension for external wait (Gill)
+	unsigned int target; // Extension for slowmove
+	uint8_t speed;		 // Extension for slowmove
 } servo_t;
 
-typedef struct {
-  uint8_t position;
-  uint8_t speed;
+typedef struct
+{
+	uint8_t position;
+	uint8_t speed;
 } servoSequencePoint;
 
 class VarSpeedServo
 {
 public:
-  VarSpeedServo();
-  uint8_t attach(int pin);           // attach the given pin to the next free channel, sets pinMode, returns channel number or 0 if failure
-  uint8_t attach(int pin, int min, int max); // as above but also sets min and max values for writes.
-  void detach();
-  void write(int value);             // if value is < 544 its treated as an angle, otherwise as pulse width in microseconds
-  void write(int value, uint8_t speed); // Move to given position at reduced speed.
-          // speed=0 is identical to write, speed=1 slowest and speed=255 fastest.
-          // On the RC-Servos tested, speeds differences above 127 can't be noticed,
-          // because of the mechanical limits of the servo.
-  void write(int value, uint8_t speed, bool wait); // wait parameter causes call to block until move completes
-  void writeMicroseconds(int value); // Write pulse width in microseconds
-  void slowmove(int value, uint8_t speed);
-  void stop(); // stop the servo where it is
+	VarSpeedServo();
+	uint8_t attach(const uint8_t pin);								 // attach the given pin to the next free channel, sets pinMode, returns channel number or 0 if failure
+	uint8_t attach(const uint8_t pin, const int min, const int max); // as above but also sets min and max values for writes.
+	void detach();
+	void write(int value);										 // if value is < 544 its treated as an angle, otherwise as pulse width in microseconds
+	void write(int value, const uint8_t speed);					 // Move to given position at reduced speed.
+																 // speed=0 is identical to write, speed=1 slowest and speed=255 fastest.
+																 // On the RC-Servos tested, speeds differences above 127 can't be noticed,
+																 // because of the mechanical limits of the servo.
+	void write(int value, const uint8_t speed, const bool wait); // wait parameter causes call to block until move completes
+	void writeMicroseconds(const int value);					 // Write pulse width in microseconds
+	void stop();												 // stop the servo where it is
 
-  int read();                        // returns current pulse width as an angle between 0 and 180 degrees
-  int readMicroseconds();            // returns current pulse width in microseconds for this servo (was read_us() in first release)
-  bool attached();                   // return true if this servo is attached, otherwise false
+	int read();				// returns current pulse width as an angle between 0 and 180 degrees
+	int readMicroseconds(); // returns current pulse width in microseconds for this servo (was read_us() in first release)
+	bool attached();		// return true if this servo is attached, otherwise false
 
-  uint8_t sequencePlay(servoSequencePoint sequenceIn[], uint8_t numPositions, bool loop, uint8_t startPos);
-  uint8_t sequencePlay(servoSequencePoint sequenceIn[], uint8_t numPositions); // play a looping sequence starting at position 0
-  void sequenceStop(); // stop movement
-  void wait(); // wait for movement to finish
-  bool isMoving(); // return true if servo is still moving
+	bool isMoving(); // return true if servo is still moving
+
+	void wait(); // wait for movement to finish
+
+#ifndef SAFE_MEMORY
+	uint8_t sequencePlay(servoSequencePoint sequenceIn[], const uint8_t numPositions, const bool loop, const uint8_t startPos);
+	uint8_t sequencePlay(servoSequencePoint sequenceIn[], const uint8_t numPositions); // play a looping sequence starting at position 0
+	void sequenceStop();															   // stop movement
+#endif
+
 private:
-   uint8_t servoIndex;               // index into the channel data for this servo
-   int8_t min;                       // minimum is this value times 4 added to MIN_PULSE_WIDTH
-   int8_t max;                       // maximum is this value times 4 added to MAX_PULSE_WIDTH
-   servoSequencePoint * curSequence; // for sequences
-   uint8_t curSeqPosition; // for sequences
-
+	uint8_t servoIndex;				 // index into the channel data for this servo
+	int min;						 // minimum is this value times 4 added to MIN_PULSE_WIDTH
+	int max;						 // maximum is this value times 4 added to MAX_PULSE_WIDTH
+#ifndef SAFE_MEMORY
+	servoSequencePoint *curSequence; // for sequences
+	uint8_t curSeqPosition;			 // for sequences
+#endif
 };
 
 #endif
