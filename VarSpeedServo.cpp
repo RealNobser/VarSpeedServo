@@ -313,8 +313,8 @@ VarSpeedServo::VarSpeedServo()
 {
 	if (ServoCount < MAX_SERVOS)
 	{
-		this->servoIndex = ServoCount++; // assign a servo index to this instance
-		servos[this->servoIndex].ticks = 0;
+		this->servoIndex = ServoCount++; 	// assign a servo index to this instance
+		servos[this->servoIndex].ticks = 0;	// No default position on attach
 		this->curSeqPosition = 0;
 		this->curSequence = initSeq;
 	}
@@ -374,6 +374,7 @@ void VarSpeedServo::write(uint16_t value, const uint8_t speed)
 
 	uint8_t channel = this->servoIndex;
 	servos[channel].value = value;
+	servos[channel].speed = speed;
 
 	if (value < MIN_PULSE_WIDTH)
 	{ // treat values less than 544 as angles in degrees (valid values in microseconds are handled as microseconds)
@@ -381,29 +382,7 @@ void VarSpeedServo::write(uint16_t value, const uint8_t speed)
 		value = map(value, 0, 180, SERVO_MIN(), SERVO_MAX());
 	}
 
-	if (speed)
-	{
-		// calculate and store the values for the given channel
-		if ((channel >= 0) && (channel < MAX_SERVOS))
-		{ // ensure channel is valid
-			// updated to use constrain instead of if, pva
-			value = constrain(value, SERVO_MIN(), SERVO_MAX());
-
-			value = value - TRIM_DURATION;
-			value = usToTicks(value); // convert to ticks after compensating for interrupt overhead - 12 Aug 2009
-
-			// Set speed and direction
-			uint8_t oldSREG = SREG;
-			cli();
-			servos[channel].target = value; // VALUE
-			servos[channel].speed = speed;	// SPEED
-			SREG = oldSREG;
-		}
-	}
-	else
-	{
-		this->writeMicroseconds(value, 0);
-	}
+	this->writeMicroseconds(value, speed);
 }
 
 void VarSpeedServo::writeMicroseconds(uint16_t value, const uint8_t speed)
@@ -411,6 +390,7 @@ void VarSpeedServo::writeMicroseconds(uint16_t value, const uint8_t speed)
 	// calculate and store the values for the given channel
 	uint8_t channel = this->servoIndex;
 	servos[channel].value = value;
+	servos[channel].speed = speed;
 
 	if ((channel >= 0) && (channel < MAX_SERVOS)) // ensure channel is valid
 	{
@@ -419,15 +399,21 @@ void VarSpeedServo::writeMicroseconds(uint16_t value, const uint8_t speed)
 		value -= TRIM_DURATION;
 		value = usToTicks(value); // convert to ticks after compensating for interrupt overhead - 12 Aug 2009
 
-		uint8_t oldSREG = SREG;
-		cli();
-		servos[channel].ticks = value; // TICKS!
-		SREG = oldSREG;
-
-		// Extension for slowmove
-		// Disable slowmove logic.
-		servos[channel].speed = 0;
-		// End of Extension for slowmove
+		if (speed == 0)
+		{
+			uint8_t oldSREG = SREG;
+			cli();
+			servos[channel].ticks = value; // TICKS!
+			SREG = oldSREG;	
+		}
+		else
+		{
+			// Set speed and direction
+			uint8_t oldSREG = SREG;
+			cli();
+			servos[channel].target = value; // VALUE
+			SREG = oldSREG;			
+		}
 	}
 }
 
