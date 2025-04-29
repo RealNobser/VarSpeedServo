@@ -315,21 +315,19 @@ VarSpeedServo::VarSpeedServo()
 	{
 		this->servoIndex = ServoCount++;								 // assign a servo index to this instance
 		servos[this->servoIndex].ticks = usToTicks(DEFAULT_PULSE_WIDTH); // store default values  - 12 Aug 2009
-		#ifndef SAFE_MEMORY
 		this->curSeqPosition = 0;
 		this->curSequence = initSeq;
-		#endif
 	}
 	else
 		this->servoIndex = INVALID_SERVO; // too many servos
 }
 
-uint8_t VarSpeedServo::attach(const uint8_t pin)
+uint8_t VarSpeedServo::attach(int pin)
 {
 	return this->attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
 }
 
-uint8_t VarSpeedServo::attach(const uint8_t pin, int min, int max)
+uint8_t VarSpeedServo::attach(int pin, int min, int max)
 {
 	if (this->servoIndex < MAX_SERVOS)
 	{
@@ -410,7 +408,7 @@ void VarSpeedServo::writeMicroseconds(int value)
 		  speed=1 - Minimum speed
 		  speed=255 - Maximum speed
 */
-void VarSpeedServo::write(int value, const uint8_t speed)
+void VarSpeedServo::write(int value, uint8_t speed)
 {
 	// This fuction is a copy of write and writeMicroseconds but value will be saved
 	// in target instead of in ticks in the servo structure and speed will be save
@@ -453,7 +451,7 @@ void VarSpeedServo::write(int value, const uint8_t speed)
 	}
 }
 
-void VarSpeedServo::write(const int value, const uint8_t speed, const bool wait)
+void VarSpeedServo::write(int value, uint8_t speed, bool wait)
 {
 	write(value, speed);
 
@@ -481,6 +479,14 @@ void VarSpeedServo::stop()
 	write(read());
 }
 
+void VarSpeedServo::slowmove(int value, uint8_t speed)
+{
+	// legacy function to support original version of VarSpeedServo
+	write(value, speed);
+}
+
+// End of Extension for slowmove
+
 int VarSpeedServo::read() // return the value as degrees
 {
 	return map(this->readMicroseconds() + 1, SERVO_MIN(), SERVO_MAX(), 0, 180);
@@ -500,6 +506,57 @@ int VarSpeedServo::readMicroseconds()
 bool VarSpeedServo::attached()
 {
 	return servos[this->servoIndex].Pin.isActive;
+}
+
+uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], uint8_t numPositions, bool loop, uint8_t startPos)
+{
+	uint8_t oldSeqPosition = this->curSeqPosition;
+
+	if (this->curSequence != sequenceIn)
+	{
+		// Serial.println("newSeq");
+		this->curSequence = sequenceIn;
+		this->curSeqPosition = startPos;
+		oldSeqPosition = 255;
+	}
+
+	if (read() == sequenceIn[this->curSeqPosition].position && this->curSeqPosition != CURRENT_SEQUENCE_STOP)
+	{
+		this->curSeqPosition++;
+
+		if (this->curSeqPosition >= numPositions)
+		{ // at the end of the loop
+			if (loop)
+			{ // reset to the beginning of the loop
+				this->curSeqPosition = 0;
+			}
+			else
+			{ // stop the loop
+				this->curSeqPosition = CURRENT_SEQUENCE_STOP;
+			}
+		}
+	}
+
+	if (this->curSeqPosition != oldSeqPosition && this->curSeqPosition != CURRENT_SEQUENCE_STOP)
+	{
+		// CURRENT_SEQUENCE_STOP position means the animation has ended, and should no longer be played
+		// otherwise move to the next position
+		write(sequenceIn[this->curSeqPosition].position, sequenceIn[this->curSeqPosition].speed);
+		// Serial.println(this->seqCurPosition);
+	}
+
+	return this->curSeqPosition;
+}
+
+uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], uint8_t numPositions)
+{
+	return sequencePlay(sequenceIn, numPositions, true, 0);
+}
+
+void VarSpeedServo::sequenceStop()
+{
+	write(read());
+	this->curSeqPosition = CURRENT_SEQUENCE_STOP;
 }
 
 // to be used only with "write(value, speed)"
@@ -546,59 +603,6 @@ bool VarSpeedServo::isMoving()
 	}
 	return false;
 }
-
-#ifndef SAFE_MEMORY
-uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], const uint8_t numPositions, const bool loop, const uint8_t startPos)
-{
-	uint8_t oldSeqPosition = this->curSeqPosition;
-
-	if (this->curSequence != sequenceIn)
-	{
-		// Serial.println("newSeq");
-		this->curSequence = sequenceIn;
-		this->curSeqPosition = startPos;
-		oldSeqPosition = 255;
-	}
-
-	if (read() == sequenceIn[this->curSeqPosition].position && this->curSeqPosition != CURRENT_SEQUENCE_STOP)
-	{
-		this->curSeqPosition++;
-
-		if (this->curSeqPosition >= numPositions)
-		{ // at the end of the loop
-			if (loop)
-			{ // reset to the beginning of the loop
-				this->curSeqPosition = 0;
-			}
-			else
-			{ // stop the loop
-				this->curSeqPosition = CURRENT_SEQUENCE_STOP;
-			}
-		}
-	}
-
-	if (this->curSeqPosition != oldSeqPosition && this->curSeqPosition != CURRENT_SEQUENCE_STOP)
-	{
-		// CURRENT_SEQUENCE_STOP position means the animation has ended, and should no longer be played
-		// otherwise move to the next position
-		write(sequenceIn[this->curSeqPosition].position, sequenceIn[this->curSeqPosition].speed);
-		// Serial.println(this->seqCurPosition);
-	}
-
-	return this->curSeqPosition;
-}
-
-uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], const uint8_t numPositions)
-{
-	return sequencePlay(sequenceIn, numPositions, true, 0);
-}
-
-void VarSpeedServo::sequenceStop()
-{
-	write(read());
-	this->curSeqPosition = CURRENT_SEQUENCE_STOP;
-}
-#endif
 
 /*
 	To do
