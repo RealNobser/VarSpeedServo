@@ -313,7 +313,7 @@ VarSpeedServo::VarSpeedServo()
 {
 	if (ServoCount < MAX_SERVOS)
 	{
-		this->servoIndex = ServoCount++;								 // assign a servo index to this instance
+		this->servoIndex = ServoCount++; // assign a servo index to this instance
 		servos[this->servoIndex].ticks = 0;
 		this->curSeqPosition = 0;
 		this->curSequence = initSeq;
@@ -355,51 +355,9 @@ void VarSpeedServo::detach()
 	}
 }
 
-void VarSpeedServo::write(uint16_t value)
-{
-
-	byte channel = this->servoIndex;
-	servos[channel].value = value;
-
-	if (value < MIN_PULSE_WIDTH)
-	{ // treat values less than 544 as angles in degrees (valid values in microseconds are handled as microseconds)
-		// updated to use constrain() instead of if(), pva
-		value = constrain(value, 0, 180);
-		value = map(value, 0, 180, SERVO_MIN(), SERVO_MAX());
-	}
-	this->writeMicroseconds(value);
-}
-
-void VarSpeedServo::writeMicroseconds(uint16_t value)
-{
-	// calculate and store the values for the given channel
-	byte channel = this->servoIndex;
-	servos[channel].value = value;
-
-	if ((channel >= 0) && (channel < MAX_SERVOS)) // ensure channel is valid
-	{
-		if (value < SERVO_MIN()) // ensure pulse width is valid
-			value = SERVO_MIN();
-		else if (value > SERVO_MAX())
-			value = SERVO_MAX();
-
-		value -= TRIM_DURATION;
-		value = usToTicks(value); // convert to ticks after compensating for interrupt overhead - 12 Aug 2009
-
-		uint8_t oldSREG = SREG;
-		cli();
-		servos[channel].ticks = value;
-		SREG = oldSREG;
-
-		// Extension for slowmove
-		// Disable slowmove logic.
-		servos[channel].speed = 0;
-		// End of Extension for slowmove
-	}
-}
-
 // Extension for slowmove
 /*
+if value is < 544 its treated as an angle, otherwise as pulse width in microseconds
   write(value, speed) - Just like write but at reduced speed.
 
   value - Target position for the servo. Identical use as value of the function write.
@@ -414,20 +372,17 @@ void VarSpeedServo::write(uint16_t value, const uint8_t speed)
 	// in target instead of in ticks in the servo structure and speed will be save
 	// there too.
 
-	byte channel = this->servoIndex;
+	uint8_t channel = this->servoIndex;
 	servos[channel].value = value;
+
+	if (value < MIN_PULSE_WIDTH)
+	{ // treat values less than 544 as angles in degrees (valid values in microseconds are handled as microseconds)
+		value = constrain(value, 0, 180);
+		value = map(value, 0, 180, SERVO_MIN(), SERVO_MAX());
+	}
 
 	if (speed)
 	{
-
-		if (value < MIN_PULSE_WIDTH)
-		{
-			// treat values less than 544 as angles in degrees (valid values in microseconds are handled as microseconds)
-			// updated to use constrain instead of if, pva
-			value = constrain(value, 0, 180);
-			value = map(value, 0, 180, SERVO_MIN(), SERVO_MAX());
-		}
-
 		// calculate and store the values for the given channel
 		if ((channel >= 0) && (channel < MAX_SERVOS))
 		{ // ensure channel is valid
@@ -440,14 +395,39 @@ void VarSpeedServo::write(uint16_t value, const uint8_t speed)
 			// Set speed and direction
 			uint8_t oldSREG = SREG;
 			cli();
-			servos[channel].target = value;
-			servos[channel].speed = speed;
+			servos[channel].target = value; // VALUE
+			servos[channel].speed = speed;	// SPEED
 			SREG = oldSREG;
 		}
 	}
 	else
 	{
-		write(value);
+		this->writeMicroseconds(value, 0);
+	}
+}
+
+void VarSpeedServo::writeMicroseconds(uint16_t value, const uint8_t speed)
+{
+	// calculate and store the values for the given channel
+	uint8_t channel = this->servoIndex;
+	servos[channel].value = value;
+
+	if ((channel >= 0) && (channel < MAX_SERVOS)) // ensure channel is valid
+	{
+		value = constrain(value, SERVO_MIN(), SERVO_MAX());
+
+		value -= TRIM_DURATION;
+		value = usToTicks(value); // convert to ticks after compensating for interrupt overhead - 12 Aug 2009
+
+		uint8_t oldSREG = SREG;
+		cli();
+		servos[channel].ticks = value; // TICKS!
+		SREG = oldSREG;
+
+		// Extension for slowmove
+		// Disable slowmove logic.
+		servos[channel].speed = 0;
+		// End of Extension for slowmove
 	}
 }
 
@@ -476,7 +456,7 @@ void VarSpeedServo::write(uint16_t value, const uint8_t speed, const bool wait)
 
 void VarSpeedServo::stop()
 {
-	write(read());
+	write(read(), 0);
 }
 
 // End of Extension for slowmove
@@ -549,14 +529,14 @@ uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], const uint8
 
 void VarSpeedServo::sequenceStop()
 {
-	write(read());
+	write(read(), 0);
 	this->curSeqPosition = CURRENT_SEQUENCE_STOP;
 }
 
 // to be used only with "write(value, speed)"
 void VarSpeedServo::wait()
 {
-	byte channel = this->servoIndex;
+	uint8_t channel = this->servoIndex;
 	int value = servos[channel].value;
 
 	// wait until is done
@@ -578,7 +558,7 @@ void VarSpeedServo::wait()
 
 bool VarSpeedServo::isMoving()
 {
-	byte channel = this->servoIndex;
+	uint8_t channel = this->servoIndex;
 	int value = servos[channel].value;
 
 	if (value < MIN_PULSE_WIDTH)
@@ -601,12 +581,12 @@ bool VarSpeedServo::isMoving()
 /*
 	To do
 int VarSpeedServo::targetPosition() {
-	byte channel = this->servoIndex;
+	uint8_t channel = this->servoIndex;
 	return map( servos[channel].target+1, SERVO_MIN(), SERVO_MAX(), 0, 180);
 }
 
 int VarSpeedServo::targetPositionMicroseconds() {
-	byte channel = this->servoIndex;
+	uint8_t channel = this->servoIndex;
 	return servos[channel].target;
 }
 

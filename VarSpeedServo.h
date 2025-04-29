@@ -178,14 +178,14 @@ public:
 	uint8_t attach(const uint8_t pin);										   // attach the given pin to the next free channel, sets pinMode, returns channel number or 0 if failure
 	uint8_t attach(const uint8_t pin, const uint16_t min, const uint16_t max); // as above but also sets min and max values for writes.
 	void detach();
-	void write(uint16_t value);										 // if value is < 544 its treated as an angle, otherwise as pulse width in microseconds
-	void write(uint16_t value, const uint8_t speed);				 // Move to given position at reduced speed.
-																	 // speed=0 is identical to write, speed=1 slowest and speed=255 fastest.
-																	 // On the RC-Servos tested, speeds differences above 127 can't be noticed,
-																	 // because of the mechanical limits of the servo.
+	void write(uint16_t value, const uint8_t speed);				  // if value is < 544 its treated as an angle, otherwise as pulse width in microseconds
+																	  // Move to given position at reduced speed.
+																	  // speed=0 is identical to write, speed=1 slowest and speed=255 fastest.
+																	  // On the RC-Servos tested, speeds differences above 127 can't be noticed,
+																	  // because of the mechanical limits of the servo.
 	void write(uint16_t value, const uint8_t speed, const bool wait); // wait parameter causes call to block until move completes
-	void writeMicroseconds(uint16_t value);							 // Write pulse width in microseconds
-	void stop(); // stop the servo where it is
+	void writeMicroseconds(uint16_t value, const uint8_t speed);	  // Write pulse width in microseconds
+	void stop();													  // stop the servo where it is
 
 	uint16_t read();			 // returns current pulse width as an angle between 0 and 180 degrees
 	uint16_t readMicroseconds(); // returns current pulse width in microseconds for this servo (was read_us() in first release)
