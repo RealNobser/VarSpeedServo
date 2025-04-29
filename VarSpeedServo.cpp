@@ -399,21 +399,13 @@ void VarSpeedServo::writeMicroseconds(uint16_t value, const uint8_t speed)
 		value -= TRIM_DURATION;
 		value = usToTicks(value); // convert to ticks after compensating for interrupt overhead - 12 Aug 2009
 
+		uint8_t oldSREG = SREG;
+		cli();
 		if (speed == 0)
-		{
-			uint8_t oldSREG = SREG;
-			cli();
 			servos[channel].ticks = value; // TICKS!
-			SREG = oldSREG;	
-		}
 		else
-		{
-			// Set speed and direction
-			uint8_t oldSREG = SREG;
-			cli();
 			servos[channel].target = value; // VALUE
-			SREG = oldSREG;			
-		}
+		SREG = oldSREG;	
 	}
 }
 
