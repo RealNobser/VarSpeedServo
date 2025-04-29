@@ -314,7 +314,7 @@ VarSpeedServo::VarSpeedServo()
 	if (ServoCount < MAX_SERVOS)
 	{
 		this->servoIndex = ServoCount++;								 // assign a servo index to this instance
-		servos[this->servoIndex].ticks = usToTicks(DEFAULT_PULSE_WIDTH); // store default values  - 12 Aug 2009
+		servos[this->servoIndex].ticks = 0;
 		this->curSeqPosition = 0;
 		this->curSequence = initSeq;
 	}
@@ -322,12 +322,12 @@ VarSpeedServo::VarSpeedServo()
 		this->servoIndex = INVALID_SERVO; // too many servos
 }
 
-uint8_t VarSpeedServo::attach(int pin)
+uint8_t VarSpeedServo::attach(const uint8_t pin)
 {
 	return this->attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
 }
 
-uint8_t VarSpeedServo::attach(int pin, int min, int max)
+uint8_t VarSpeedServo::attach(const uint8_t pin, const uint16_t min, const uint16_t max)
 {
 	if (this->servoIndex < MAX_SERVOS)
 	{
@@ -355,7 +355,7 @@ void VarSpeedServo::detach()
 	}
 }
 
-void VarSpeedServo::write(int value)
+void VarSpeedServo::write(uint16_t value)
 {
 
 	byte channel = this->servoIndex;
@@ -370,7 +370,7 @@ void VarSpeedServo::write(int value)
 	this->writeMicroseconds(value);
 }
 
-void VarSpeedServo::writeMicroseconds(int value)
+void VarSpeedServo::writeMicroseconds(uint16_t value)
 {
 	// calculate and store the values for the given channel
 	byte channel = this->servoIndex;
@@ -408,7 +408,7 @@ void VarSpeedServo::writeMicroseconds(int value)
 		  speed=1 - Minimum speed
 		  speed=255 - Maximum speed
 */
-void VarSpeedServo::write(int value, uint8_t speed)
+void VarSpeedServo::write(uint16_t value, const uint8_t speed)
 {
 	// This fuction is a copy of write and writeMicroseconds but value will be saved
 	// in target instead of in ticks in the servo structure and speed will be save
@@ -451,7 +451,7 @@ void VarSpeedServo::write(int value, uint8_t speed)
 	}
 }
 
-void VarSpeedServo::write(int value, uint8_t speed, bool wait)
+void VarSpeedServo::write(uint16_t value, const uint8_t speed, const bool wait)
 {
 	write(value, speed);
 
@@ -479,20 +479,14 @@ void VarSpeedServo::stop()
 	write(read());
 }
 
-void VarSpeedServo::slowmove(int value, uint8_t speed)
-{
-	// legacy function to support original version of VarSpeedServo
-	write(value, speed);
-}
-
 // End of Extension for slowmove
 
-int VarSpeedServo::read() // return the value as degrees
+uint16_t VarSpeedServo::read() // return the value as degrees
 {
 	return map(this->readMicroseconds() + 1, SERVO_MIN(), SERVO_MAX(), 0, 180);
 }
 
-int VarSpeedServo::readMicroseconds()
+uint16_t VarSpeedServo::readMicroseconds()
 {
 	unsigned int pulsewidth;
 	if (this->servoIndex != INVALID_SERVO)
@@ -508,7 +502,7 @@ bool VarSpeedServo::attached()
 	return servos[this->servoIndex].Pin.isActive;
 }
 
-uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], uint8_t numPositions, bool loop, uint8_t startPos)
+uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], const uint8_t numPositions, const bool loop, const uint8_t startPos)
 {
 	uint8_t oldSeqPosition = this->curSeqPosition;
 
@@ -548,7 +542,7 @@ uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], uint8_t num
 	return this->curSeqPosition;
 }
 
-uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], uint8_t numPositions)
+uint8_t VarSpeedServo::sequencePlay(servoSequencePoint sequenceIn[], const uint8_t numPositions)
 {
 	return sequencePlay(sequenceIn, numPositions, true, 0);
 }
