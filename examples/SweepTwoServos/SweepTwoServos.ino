@@ -17,7 +17,7 @@ VarSpeedServo myservo1;  // create servo object to control a servo
 VarSpeedServo myservo2;
  
 const int servoPin1 = 9; // the digital pin used for the first servo
-const int servoPin2 = 10; // the digital pin used for the second servo
+const int servoPin2 = 8; // the digital pin used for the second servo
  
 void setup() { 
   myservo1.attach(servoPin1);  // attaches the servo on pin 9 to the servo object
