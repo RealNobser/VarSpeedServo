@@ -449,7 +449,7 @@ uint16_t VarSpeedServo::read() // return the value as degrees
 
 uint16_t VarSpeedServo::readMicroseconds()
 {
-	unsigned int pulsewidth;
+	uint16_t pulsewidth;
 	if (this->servoIndex != INVALID_SERVO)
 		pulsewidth = ticksToUs(servos[this->servoIndex].ticks) + TRIM_DURATION; // 12 aug 2009
 	else
@@ -518,7 +518,7 @@ void VarSpeedServo::sequenceStop()
 void VarSpeedServo::wait()
 {
 	uint8_t channel = this->servoIndex;
-	int value = servos[channel].value;
+	uint16_t value = servos[channel].value;
 
 	// wait until is done
 	if (value < MIN_PULSE_WIDTH)
@@ -540,7 +540,7 @@ void VarSpeedServo::wait()
 bool VarSpeedServo::isMoving()
 {
 	uint8_t channel = this->servoIndex;
-	int value = servos[channel].value;
+	uint16_t value = servos[channel].value;
 
 	if (value < MIN_PULSE_WIDTH)
 	{
@@ -561,12 +561,12 @@ bool VarSpeedServo::isMoving()
 
 /*
 	To do
-int VarSpeedServo::targetPosition() {
+uint16_t VarSpeedServo::targetPosition() {
 	uint8_t channel = this->servoIndex;
 	return map( servos[channel].target+1, SERVO_MIN(), SERVO_MAX(), 0, 180);
 }
 
-int VarSpeedServo::targetPositionMicroseconds() {
+uint16_t VarSpeedServo::targetPositionMicroseconds() {
 	uint8_t channel = this->servoIndex;
 	return servos[channel].target;
 }
