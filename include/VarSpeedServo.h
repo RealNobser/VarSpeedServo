@@ -180,6 +180,7 @@ public:
 	// attach the given pin to the next free channel, sets pinMode, returns channel number or 0 if failure
 	// also sets min and max values for writes										   
 	uint8_t attach(const uint8_t pin);
+	uint8_t attach(const uint8_t pin, const uint16_t defaultPulseWidth);
 	uint8_t attach(const uint8_t pin, const uint16_t min, const uint16_t max);
 	uint8_t attach(const uint8_t pin, const uint16_t min, const uint16_t max, const uint16_t defaultPulseWidth);
 

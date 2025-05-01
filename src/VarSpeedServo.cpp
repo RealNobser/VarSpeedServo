@@ -328,6 +328,11 @@ uint8_t VarSpeedServo::attach(const uint8_t pin)
 	return attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
 }
 
+uint8_t VarSpeedServo::attach(const uint8_t pin, const uint16_t defaultPulseWidth)
+{
+	return attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH, defaultPulseWidth);
+}
+
 uint8_t VarSpeedServo::attach(const uint8_t pin, const uint16_t min, const uint16_t max, const uint16_t defaultPulseWidth)
 {
 	servos[this->servoIndex].ticks = usToTicks(defaultPulseWidth);
