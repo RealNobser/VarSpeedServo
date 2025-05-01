@@ -178,7 +178,10 @@ public:
 
 	// attach the given pin to the next free channel, sets pinMode, returns channel number or 0 if failure
 	// also sets min and max values for writes										   
-	uint8_t attach(const uint8_t pin, const uint16_t min = MIN_PULSE_WIDTH, const uint16_t max = MAX_PULSE_WIDTH, const uint16_t defaultPulseWidth = 0);
+	uint8_t attach(const uint8_t pin);
+	uint8_t attach(const uint8_t pin, const uint16_t min, const uint16_t max);
+	uint8_t attach(const uint8_t pin, const uint16_t min, const uint16_t max, const uint16_t defaultPulseWidth);
+
 	void detach();
 
 	void write(uint16_t value, const uint8_t speed = 0);			  // if value is < 544 its treated as an angle, otherwise as pulse width in microseconds

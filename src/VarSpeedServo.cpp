@@ -322,13 +322,23 @@ VarSpeedServo::VarSpeedServo()
 		this->servoIndex = INVALID_SERVO; // too many servos
 }
 
-uint8_t VarSpeedServo::attach(const uint8_t pin, const uint16_t min /*= MIN_PULSE_WIDTH*/, const uint16_t max /*= MAX_PULSE_WIDTH*/, const uint16_t defaultPulseWidth /*= 0*/)
+uint8_t VarSpeedServo::attach(const uint8_t pin)
+{
+	return attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+}
+
+uint8_t VarSpeedServo::attach(const uint8_t pin, const uint16_t min, const uint16_t max, const uint16_t defaultPulseWidth)
+{
+	servos[this->servoIndex].ticks = usToTicks(defaultPulseWidth);
+	return attach(pin, min, max);
+}
+
+uint8_t VarSpeedServo::attach(const uint8_t pin, const uint16_t min, const uint16_t max)
 {
 	if (this->servoIndex < MAX_SERVOS)
 	{
 		pinMode(pin, OUTPUT); // set servo pin to output
 		servos[this->servoIndex].Pin.nbr = pin;
-		servos[this->servoIndex].ticks = usToTicks(defaultPulseWidth); 
 		// todo min/max check: abs(min - MIN_PULSE_WIDTH) /4 < 128
 		this->min = (MIN_PULSE_WIDTH - min) / 4; // resolution of min/max is 4 uS
 		this->max = (MAX_PULSE_WIDTH - max) / 4;
