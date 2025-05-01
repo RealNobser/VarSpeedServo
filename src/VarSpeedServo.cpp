@@ -314,7 +314,8 @@ VarSpeedServo::VarSpeedServo()
 	if (ServoCount < MAX_SERVOS)
 	{
 		this->servoIndex = ServoCount++; 	// assign a servo index to this instance
-		servos[this->servoIndex].ticks = 0;	// No default position on attach
+		//servos[this->servoIndex].ticks = 0;	// No default position on attach
+		servos[this->servoIndex].ticks = usToTicks(DEFAULT_PULSE_WIDTH);
 		this->curSeqPosition = 0;
 		this->curSequence = initSeq;
 	}
